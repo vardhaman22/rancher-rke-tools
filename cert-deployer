@@ -38,9 +38,6 @@ if [ -n "${ETCD_UID}" ] && [ -n "${ETCD_GID}" ]; then
     if [[ $name == *kube-etcd* ]] ; then
         chown "${ETCD_UID}":"${ETCD_GID}" $name
     fi
-    if [[ $name == *kube-ca.pem ]] ; then
-        chmod 644 $name
-    fi
   done
   chmod 755 $SSL_CRTS_DIR
 fi
