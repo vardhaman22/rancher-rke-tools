@@ -72,3 +72,4 @@ jobs:
         with:
           renovate-version: ${{ env.RENOVATE_VERSION }}
           configurationFile: ${{ env.RENOVATE_CONFIG_FILE }}
+          token: "${{ secrets.TOKEN  }}"
