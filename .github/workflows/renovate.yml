@@ -1,5 +1,22 @@
 name: Renovate
 on:
+  workflow_call:
+    inputs:
+      logLevel:
+        description: "Override default log level"
+        required: false
+        default: "info"
+        type: string
+      overrideSchedule:
+        description: "Override all schedules"
+        required: false
+        default: "false"
+        type: string
+      runner:
+        description: "Value to be used on runs-on"
+        required: false
+        default: "ubuntu-latest"
+        type: string
   workflow_dispatch:
     inputs:
       logLevel:
@@ -12,14 +29,46 @@ on:
         required: false
         default: "false"
         type: string
-  # Run twice in the early morning (UTC) for initial and follow up steps (create pull request and merge)
+      runner:
+        description: "Value to be used on runs-on"
+        required: false
+        default: "ubuntu-latest"
+        type: string
   schedule:
-    - cron: '30 4,6 * * *'
+    - cron: '30 4,6 * * 6,0'
+
+concurrency: renovate
+
+env:
+  # Specify what Renovate version to use (this is separate from the github-action version)
+  RENOVATE_VERSION: "37.440.7"
+  # Repository taken from variable to keep configuration file generic
+  RENOVATE_REPOSITORIES: ${{ github.repository }}
+  # Onboarding not needed for self hosted
+  RENOVATE_ONBOARDING: "false"
+  # Username for GitHub authentication (should match GitHub App name + [bot])
+  RENOVATE_USERNAME: "renovate-rancher[bot]"
+  # Git commit author used, must match GitHub App
+  RENOVATE_GIT_AUTHOR: "renovate-rancher <119870437+renovate-rancher[bot]@users.noreply.github.com>"
+  # Use GitHub API to create commits (this allows for signed commits from GitHub App)
+  RENOVATE_PLATFORM_COMMIT: "true"
+  # Override schedule if set
+  RENOVATE_FORCE: ${{ github.event.inputs.overrideSchedule == 'true' && '{''schedule'':null}' || '' }}
+  # Override loglevel if set
+  LOG_LEVEL: ${{ inputs.logLevel || 'info' }}
+  RENOVATE_CONFIG_FILE: .github/renovate.json
 
 jobs:
-  call-workflow:
-    uses: rancher/renovate-config/.github/workflows/renovate.yml@release
-    with:
-      logLevel: ${{ inputs.logLevel || 'info' }}
-      overrideSchedule: ${{ github.event.inputs.overrideSchedule == 'true' && '{''schedule'':null}' || '' }}
-    secrets: inherit
+  renovate:
+    if:  ${{ inputs.runner }} == "ubuntu-latest"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - name: Validate and printout config
+        run: jq -e . "${RENOVATE_CONFIG_FILE}"
+      - name: Self-hosted Renovate
+        uses: renovatebot/github-action@0c94129d48b4e92addf23686b8a735b3057a0448 # v40.2.5
+        with:
+          renovate-version: ${{ env.RENOVATE_VERSION }}
+          configurationFile: ${{ env.RENOVATE_CONFIG_FILE }}
